@@ -834,10 +834,11 @@ Return JSON array:
             block = {
                 "metric":          r["metric_name"],
                 "category":        r.get("metric_category", "research"),
-                "exec_output":     (r.get("execution_output") or "")[:250],
-                "interpretation":  r.get("metric_interpretation", "")[:250],
+                "quality_score":   round(r.get("quality_score", 0.0), 4),
                 "anomalous_count": r["anomalous_row_count"],
-                "sample_rows":     r.get("anomalous_row_narratives", [])[:2],
+                "anomalous_pct":   round(r["anomalous_row_count"] / max(df_shape[0], 1) * 100, 1),
+                "exec_output":     (r.get("execution_output") or "")[:300],
+                "interpretation":  r.get("metric_interpretation", "")[:200],
                 "error":           r.get("error"),
             }
             if r.get("metric_source") == "universal":
@@ -859,45 +860,51 @@ RESEARCH-BASED METRICS (researcher-proposed, dataset-specific):
 YOUR ROLE: Assess DATA QUALITY only — structure, consistency, completeness, statistical properties.
 This is NOT a safety, privacy, or governance review.
 
-CALIBRATION RULES — read carefully before assigning verdict:
-1. Code, execution traces, agent reasoning, mathematical notation, long sequences = NORMAL content.
-   Do NOT penalise a dataset for containing these.
-2. Benchmark and research datasets are HIGH_QUALITY or ACCEPTABLE_QUALITY by default.
-   Only downgrade if you have concrete statistical evidence of systematic quality failure.
-3. Some outliers and anomalies are EXPECTED and HEALTHY in any real dataset.
-   Penalise only if the proportion is unusually high (>20% of rows) or the pattern is systematic.
-4. Metric computation errors count against the pipeline, not the data.
-5. UNSAFE/POOR_QUALITY requires strong, specific evidence: majority of rows broken,
-   systematic inconsistency, extreme null rates (>60%), or proven structural corruption.
+CALIBRATION RULES:
+1. Code, execution traces, mathematical notation = NORMAL content. Do NOT penalise for these.
+2. Metric computation errors count against the pipeline, not the data.
+3. Judge each metric strictly on its quality_score (0.0–1.0) and anomalous_count:
+   - quality_score >= 0.75 AND anomalies < 10% of rows  → GOOD
+   - quality_score >= 0.50 OR  anomalies 10–25% of rows → ACCEPTABLE
+   - quality_score < 0.50  OR  anomalies > 25% of rows  → POOR
+4. Look explicitly for corruption signals: encoding artifacts (mojibake, replacement chars),
+   truncated/empty text, keyboard-smash garbage, repeated spam tokens, injected HTML/null literals,
+   mixed-language contamination. These are ALWAYS quality defects regardless of domain.
+5. Count how many metrics land POOR vs GOOD/ACCEPTABLE:
+   - 0 POOR metrics                        → HIGH_QUALITY
+   - 1–2 POOR metrics or avg score 0.5–0.7 → ACCEPTABLE_QUALITY
+   - 3+ POOR metrics or avg score < 0.5    → POOR_QUALITY
+6. Do NOT default any dataset type to HIGH or ACCEPTABLE. Let the numbers speak.
 
-Verdict scale (data quality, not safety):
-- HIGH_QUALITY    : data is well-structured, consistent, and suitable for its domain purpose
-- ACCEPTABLE_QUALITY : minor quality issues that do not impair usability; expected variations present
-- POOR_QUALITY    : significant systematic quality failures backed by concrete metric evidence
+Verdict scale:
+- HIGH_QUALITY       : all or nearly all metrics GOOD; no systematic defects detected
+- ACCEPTABLE_QUALITY : some metrics ACCEPTABLE; isolated issues that don't break usability
+- POOR_QUALITY       : multiple metrics POOR; systematic defects, corruption, or structural failure
 
 Instructions:
-- Cite actual numbers from execution outputs.
-- Be factual and calibrated — do not amplify minor findings.
+- Cite actual quality_score numbers and anomaly counts.
+- If corruption signals (encoding garbage, truncation, spam, injected noise) appear in the
+  execution output or interpretations, flag them explicitly and weigh them heavily.
 - Never invent statistics not present in the evidence above.
 
 Return ONLY valid JSON — no markdown:
 
 {{
   "evaluated_metrics": ["<list of metric names computed>"],
-  "dataset_level_evidence": "<overall findings with actual numbers from execution>",
-  "sample_level_inconsistencies": "<only genuine structural/formatting anomalies — not domain-normal content>",
+  "dataset_level_evidence": "<overall findings with actual numbers>",
+  "sample_level_inconsistencies": "<structural/formatting defects found — cite evidence>",
   "quality_observations": "<what the metrics reveal about the data's fitness for purpose>",
-  "statistical_justification": "<empirical summary with numbers supporting the verdict>",
+  "statistical_justification": "<empirical summary: avg score, POOR/ACCEPTABLE/GOOD counts, anomaly rates>",
   "quality_by_metric": [
     {{
-      "metric"     : "<metric_name>",
-      "finding"    : "<what was found — cite numbers>",
+      "metric"        : "<metric_name>",
+      "finding"       : "<what was found — cite quality_score and anomaly count>",
       "quality_level" : "<GOOD|ACCEPTABLE|POOR>",
-      "note"       : "<1 sentence — be calibrated>"
+      "note"          : "<1 sentence>"
     }}
   ],
   "final_verdict"     : "<HIGH_QUALITY|ACCEPTABLE_QUALITY|POOR_QUALITY>",
-  "verdict_reasoning" : "<2-3 sentences grounded in metric evidence — benchmark/agent data is acceptable by default>"
+  "verdict_reasoning" : "<2-3 sentences grounded in metric scores and anomaly counts>"
 }}"""
 
         raw = self.call_llm(prompt, stream=True)

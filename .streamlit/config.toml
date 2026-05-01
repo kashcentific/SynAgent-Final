@@ -5,7 +5,7 @@ showErrorDetails = true
 level = "error"
 
 [server]
-maxUploadSize = 200
+maxUploadSize = 2048
 runOnSave = false
 headless = true
 enableXsrfProtection = true

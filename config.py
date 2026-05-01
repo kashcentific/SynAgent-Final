@@ -15,7 +15,7 @@ SAMPLE_ROW_COUNT = 50
 CATEGORICAL_RATIO = 0.05
 
 # Max rows the evaluator will process (caps huge datasets)
-MAX_ROWS_FOR_EVAL = 500
+MAX_ROWS_FOR_EVAL = 1000
 
 # Output report path (relative to project root)
 REPORT_OUTPUT_PATH = "audit_report.json"

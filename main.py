@@ -1,11 +1,12 @@
 # main.py
 
+import argparse
 import io
 import json
 import os
+import re
 import sys
 
-from datasets import load_dataset
 from graph import build_graph
 from config import REPORT_OUTPUT_PATH
 from visualize import generate_pipeline_graph
@@ -418,136 +419,128 @@ def display_result(state: dict):
 # ──────────────────────────────────────────────────────────────────────
 
 
+def _parse_hf_name(raw: str) -> str:
+    m = re.search(r'load_dataset\s*\(\s*["\']([^"\']+)["\']', raw)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r'huggingface\.co/datasets/([^\s\'"]+)', raw)
+    if m:
+        return m.group(1).strip().rstrip("/")
+    return raw.strip()
+
+
 def main():
+    # ── Force UTF-8 stdout on Windows before anything else ───────────
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+
+    parser = argparse.ArgumentParser(
+        description="SynAgent - Data Quality Audit pipeline"
+    )
+    src = parser.add_mutually_exclusive_group()
+    src.add_argument("--csv",     metavar="PATH",    help="Path to a CSV file")
+    src.add_argument("--dataset", metavar="HF_NAME", help="HuggingFace dataset id or load_dataset() snippet")
+    parser.add_argument("--rows", type=int, default=1000,
+                        help="Number of rows to audit (default: 1000)")
+    parser.add_argument("--split", default=None,
+                        help="HuggingFace split string, e.g. train[:500] (default: train[:<rows>])")
+    parser.add_argument("--hint", default=None,
+                        help="Optional natural-language hint about the dataset for the agents")
+    args = parser.parse_args()
+
     # ── Start Tee logger before anything is printed ──────────────────
     tee = _Tee(sys.stdout, BENCHMARK_WORKFLOW_PATH)
     sys.stdout = tee
 
     try:
-        _run_pipeline()
+        _run_pipeline(args)
     finally:
         sys.stdout = tee._stream
         tee.close()
 
 
-def _run_pipeline():
-    _section("SYNAGENT — DATA QUALITY AUDIT  [nebius/SWE-agent-trajectories]", "═")
-    print(f"\n  Report   → {BENCHMARK_REPORT_PATH}")
-    print(f"  Workflow → {BENCHMARK_WORKFLOW_PATH}")
+def _run_pipeline(args):
+    import pandas as pd
+    from datasets import Dataset, load_dataset as _load_hf
 
-    print("\n  Loading dataset: nebius/SWE-agent-trajectories ...")
-    try:
-        import pandas as pd
-        from datasets import Dataset, load_dataset as _load
+    # ── Load dataset ─────────────────────────────────────────────────
+    if args.csv:
+        dataset_name = os.path.splitext(os.path.basename(args.csv))[0]
+        _section(f"SYNAGENT — DATA QUALITY AUDIT  [{dataset_name}]", "═")
+        print(f"\n  Report   -> {BENCHMARK_REPORT_PATH}")
+        print(f"  Workflow -> {BENCHMARK_WORKFLOW_PATH}")
+        print(f"\n  Loading CSV: {args.csv} ...")
+        try:
+            df = pd.read_csv(args.csv)
+            if len(df) > args.rows:
+                df = df.head(args.rows).reset_index(drop=True)
+            ds = Dataset.from_pandas(df, preserve_index=False)
+        except Exception as exc:
+            print(f"  [ERROR] {exc}")
+            import traceback; traceback.print_exc()
+            sys.exit(1)
 
-        raw_ds = _load("nebius/SWE-agent-trajectories", split="train[:10]")
+    elif args.dataset:
+        dataset_name = _parse_hf_name(args.dataset).split("/")[-1]
+        _section(f"SYNAGENT — DATA QUALITY AUDIT  [{dataset_name}]", "═")
+        print(f"\n  Report   -> {BENCHMARK_REPORT_PATH}")
+        print(f"  Workflow -> {BENCHMARK_WORKFLOW_PATH}")
+        split = args.split or f"train[:{args.rows}]"
+        hf_id = _parse_hf_name(args.dataset)
+        print(f"\n  Loading HuggingFace dataset: {hf_id}  (split={split}) ...")
+        try:
+            raw_ds = _load_hf(hf_id, split=split)
+            df = raw_ds.to_pandas()
+            ds = Dataset.from_pandas(df, preserve_index=False)
+        except Exception as exc:
+            print(f"  [ERROR] {exc}")
+            import traceback; traceback.print_exc()
+            sys.exit(1)
 
-        print(f"  [OK] Raw dataset: {len(raw_ds)} rows")
-        print(f"  Raw columns: {raw_ds.column_names}")
+    else:
+        # default fallback — original hardcoded dataset
+        dataset_name = "SWE-agent-trajectories"
+        _section(f"SYNAGENT — DATA QUALITY AUDIT  [{dataset_name}]", "═")
+        print(f"\n  Report   -> {BENCHMARK_REPORT_PATH}")
+        print(f"  Workflow -> {BENCHMARK_WORKFLOW_PATH}")
+        split = args.split or f"train[:{args.rows}]"
+        print(f"\n  Loading dataset: nebius/SWE-agent-trajectories  (split={split}) ...")
+        try:
+            raw_ds = _load_hf("nebius/SWE-agent-trajectories", split=split)
+            df = raw_ds.to_pandas()
+            ds = Dataset.from_pandas(df, preserve_index=False)
+        except Exception as exc:
+            print(f"  [ERROR] {exc}")
+            import traceback; traceback.print_exc()
+            sys.exit(1)
 
-        rows = []
-        for item in raw_ds:
-            # --- core identity ---
-            instance_id = str(item.get("instance_id") or item.get("id") or "")
+    print(f"  [OK] {len(ds)} rows x {len(ds.column_names)} columns")
+    print(f"  Columns: {ds.column_names}")
+    for col in ds.column_names:
+        s = df[col].dropna().astype(str)
+        avg_len = s.str.len().mean()
+        print(f"    {col:<30}  avg_len={avg_len:.0f}  nulls={df[col].isnull().sum()}")
 
-            # --- problem statement ---
-            problem = str(
-                item.get("problem_statement")
-                or item.get("issue")
-                or item.get("target")      # nebius/SWE-agent-trajectories uses "target"
-                or item.get("prompt")
-                or ""
-            )
+    # ── Build user hint ───────────────────────────────────────────────
+    if args.hint:
+        user_hint = args.hint
+    else:
+        col_desc = ", ".join(ds.column_names)
+        sample_vals = {}
+        for col in ds.column_names[:3]:
+            v = str(df[col].dropna().iloc[0])[:120] if len(df[col].dropna()) else ""
+            sample_vals[col] = v
+        samples_str = "  |  ".join(f'{k}: "{v}"' for k, v in sample_vals.items())
+        user_hint = (
+            f"Dataset: {dataset_name}. "
+            f"Columns: {col_desc}. "
+            f"Sample values — {samples_str}. "
+            f"Evaluate text quality, semantic coherence, formatting consistency, "
+            f"and any domain-specific issues relevant to this dataset type."
+        )
 
-            # --- agent trajectory: list-of-dicts or plain string ---
-            traj_raw = item.get("trajectory") or item.get("history") or item.get("messages") or []
-            if isinstance(traj_raw, list):
-                traj_text = "\n".join(
-                    str(step.get("content") or step.get("action") or step.get("observation") or step)
-                    for step in traj_raw
-                )
-                num_steps = len(traj_raw)
-            else:
-                traj_text = str(traj_raw)
-                num_steps = traj_text.count("\n") + 1
-
-            # --- patch / solution ---
-            patch = str(
-                item.get("model_patch")
-                or item.get("patch")
-                or item.get("generated_patch")
-                or item.get("solution")
-                or ""
-            )
-
-            # --- resolution label ---
-            resolved_raw = (
-                item.get("resolved")
-                or item.get("is_resolved")
-                or item.get("success")
-                or item.get("exit_status")   # nebius uses "exit_status" e.g. "COMPLETED"
-            )
-            _POSITIVE = {"true", "1", "yes", "completed", "resolved", "success", "passed", "done"}
-            if isinstance(resolved_raw, bool):
-                resolved = int(resolved_raw)
-            elif resolved_raw is not None:
-                resolved = int(str(resolved_raw).lower() in _POSITIVE)
-            else:
-                resolved = -1   # unknown
-
-            # --- repo / model metadata ---
-            repo  = str(item.get("repo") or item.get("repository") or "")
-            model = str(item.get("model") or item.get("agent") or item.get("model_name") or "")
-
-            rows.append({
-                "instance_id":       instance_id,
-                "problem_statement": problem,
-                "trajectory":        traj_text,
-                "model_patch":       patch,
-                "resolved":          resolved,
-                "repo":              repo,
-                "model":             model,
-                "problem_length":    len(problem),
-                "trajectory_length": len(traj_text),
-                "patch_length":      len(patch),
-                "num_steps":         num_steps,
-            })
-
-        df = pd.DataFrame(rows)
-        ds = Dataset.from_pandas(df, preserve_index=False)
-
-        resolved_known = df[df.resolved >= 0]
-        resolve_rate   = resolved_known.resolved.mean() if len(resolved_known) else float("nan")
-
-        print(f"  [OK] Flattened to {len(ds)} rows x {len(ds.column_names)} columns.")
-        print(f"  Columns            : {ds.column_names}")
-        print(f"  Resolve rate       : {resolve_rate:.1%}  ({resolved_known.resolved.sum()} / {len(resolved_known)} known)")
-        print(f"  Avg problem length : {df.problem_length.mean():.0f} chars")
-        print(f"  Avg trajectory len : {df.trajectory_length.mean():.0f} chars")
-        print(f"  Avg patch length   : {df.patch_length.mean():.0f} chars")
-        print(f"  Avg steps          : {df.num_steps.mean():.1f}")
-        if df.model.str.len().sum() > 0:
-            print(f"  Models present     : {df.model.nunique()} unique — {list(df.model.unique()[:5])}")
-        if df.repo.str.len().sum() > 0:
-            print(f"  Repos present      : {df.repo.nunique()} unique")
-
-    except Exception as exc:
-        print(f"  [ERROR] Failed to load dataset: {exc}")
-        import traceback; traceback.print_exc()
-        sys.exit(1)
-
-    user_hint = (
-        "nebius/SWE-agent-trajectories — real SWE-agent runs on GitHub software engineering issues. "
-        "Each row is one agent attempt: a problem_statement (the GitHub issue), trajectory (the full "
-        "sequence of agent thoughts/actions/observations), model_patch (the code diff the agent produced), "
-        "and resolved (1=fixed, 0=failed). "
-        "Key quality concerns: semantic consistency between problem and patch, trajectory coherence and "
-        "completeness, patch quality and length distribution, label noise in the resolved flag, "
-        "and whether trajectory text is well-formed vs. truncated or repeated."
-    )
-
+    # ── Run pipeline ──────────────────────────────────────────────────
     app = build_graph()
-
     initial_state = {
         "dataset"  : ds,
         "user_hint": user_hint,
@@ -559,14 +552,13 @@ def _run_pipeline():
 
     display_result(final_state)
 
-    # Auto-generate pipeline execution graph
     graph_path = os.path.splitext(BENCHMARK_REPORT_PATH)[0] + "_pipeline_graph.png"
     try:
         generate_pipeline_graph(final_state, output_path=graph_path)
     except Exception as exc:
         print(f"\n  [WARN] Could not generate pipeline graph: {exc}")
 
-    print(f"\n  [OK] Workflow log saved       → {os.path.abspath(BENCHMARK_WORKFLOW_PATH)}")
+    print(f"\n  [OK] Workflow log saved -> {os.path.abspath(BENCHMARK_WORKFLOW_PATH)}")
 
 
 if __name__ == "__main__":

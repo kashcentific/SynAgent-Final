@@ -70,22 +70,21 @@ class BaseAgent(ABC):
 
     def _call_llm_streaming(self, prompt: str) -> str:
         """
-        Stream LLM output token-by-token, printing as it arrives.
-        Collects and returns the full response.
+        Stream LLM output, collecting tokens silently.
+        Prints a one-line start/done status so the UI log stays clean.
         """
         full_response = ""
-        print("\n[THINKING] 🤔 Agent is reasoning...\n")
-        
+        print("[THINKING] 🤔 Reasoning...", flush=True)
+
         try:
             for chunk in self.llm.stream(prompt):
-                token = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                token = chunk.content if hasattr(chunk, "content") else str(chunk)
                 if token:
-                    print(token, end="", flush=True)
                     full_response += token
-            print("\n")  # newline after streaming completes
+            print(f"[THINKING] ✓ Done ({len(full_response):,} chars)", flush=True)
             return full_response
         except Exception as e:
-            print(f"\n[BASE] Streaming failed, falling back to invoke: {e}")
+            print(f"[BASE] Streaming failed, falling back to invoke: {e}")
             response = self.llm.invoke(prompt)
             return response.content
 

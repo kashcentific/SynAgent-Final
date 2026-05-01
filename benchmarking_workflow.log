@@ -1,186 +1,69 @@
 
 ══════════════════════════════════════════════════════════════════════
-  SYNAGENT — DATA QUALITY AUDIT  [nebius/SWE-agent-trajectories]
+  SYNAGENT — DATA QUALITY AUDIT  [noised_APIGen]
 ══════════════════════════════════════════════════════════════════════
 
-  Report   → benchmarking_results.json
-  Workflow → benchmarking_workflow.log
+  Report   -> benchmarking_results.json
+  Workflow -> benchmarking_workflow.log
 
-  Loading dataset: nebius/SWE-agent-trajectories ...
-  [OK] Raw dataset: 10 rows
-  Raw columns: ['instance_id', 'model_name', 'target', 'trajectory', 'exit_status', 'generated_patch', 'eval_logs']
-  [OK] Flattened to 10 rows x 11 columns.
-  Columns            : ['instance_id', 'problem_statement', 'trajectory', 'model_patch', 'resolved', 'repo', 'model', 'problem_length', 'trajectory_length', 'patch_length', 'num_steps']
-  Resolve rate       : 0.0%  (0 / 10 known)
-  Avg problem length : 0 chars
-  Avg trajectory len : 74567 chars
-  Avg patch length   : 1174 chars
-  Avg steps          : 69.2
-  Models present     : 1 unique — ['swe-agent-llama-70b']
+  Loading CSV: noised_APIGen.csv ...
+  [OK] 200 rows x 3 columns
+  Columns: ['conversations', 'tools', 'system']
+    conversations                   avg_len=2935  nulls=5
+    tools                           avg_len=4687  nulls=5
+    system                          avg_len=3781  nulls=5
 
   Starting pipeline...
 
 
 [METADATA] Processing dataset...
-[METADATA] 10 rows × 11 cols | 0 duplicate rows | 0.0% null overall
+[METADATA] 200 rows × 3 cols | 0 duplicate rows | 2.5% null overall
 
 [UNIVERSAL] Computing universal text metrics (pre-LLM)...
-[UNIVERSAL] Text columns: ['instance_id', 'trajectory', 'model_patch', 'model']
+[UNIVERSAL] Text columns: ['conversations', 'tools', 'system']
 
 [UNIVERSAL] Loading text metric models (lazy)...
 [UNIVERSAL]   * SentenceTransformer (all-MiniLM-L6-v2): OK
-[UNIVERSAL] Primary column for universal metrics: 'trajectory'
-[UNIVERSAL] Sample size: 10 texts
+[UNIVERSAL] Primary column for universal metrics: 'tools'
+[UNIVERSAL] Sample size: 195 texts
 
 [UNIVERSAL] ── VALIDITY ──────────────────────────────────
-[UNIVERSAL]   USL_H_Score                                        score = 0.0447
+[UNIVERSAL]   USL_H_Score                                        score = 0.0869
 
 [UNIVERSAL] ── FIDELITY ──────────────────────────────────
-[UNIVERSAL]   EDS_Embedding_Distribution_Similarity              SKIP  — Degenerate: std=0.00000 — all embeddings near-identical (corpus too homogeneous 
-[UNIVERSAL]   RUBER_Unreferenced_Coherence                       score = 0.0287
+[UNIVERSAL]   EDS_Embedding_Distribution_Similarity              score = 0.5657
+[UNIVERSAL]   RUBER_Unreferenced_Coherence                       score = 0.2250
 
 [UNIVERSAL] ── DIVERSITY ─────────────────────────────────
-[UNIVERSAL]   Self_Cosine_Similarity                             score = 1.0000
-[UNIVERSAL]   TTR_Type_Token_Ratio                               score = 0.1189
-[UNIVERSAL]   Distinct_N_Unique_Ngrams                           score = 0.0477
-[UNIVERSAL]   Response_Entropy_Ent_N                             score = 0.7982
+[UNIVERSAL]   Self_Cosine_Similarity                             score = 0.3174
+[UNIVERSAL]   TTR_Type_Token_Ratio                               score = 0.5032
+[UNIVERSAL]   Distinct_N_Unique_Ngrams                           score = 0.0837
+[UNIVERSAL]   Response_Entropy_Ent_N                             score = 0.6715
 
-[UNIVERSAL] Done — 6 computed, 1 skipped.
+[UNIVERSAL] Done — 7 computed, 0 skipped.
 
-[UNIVERSAL] 6 computed, 1 skipped.
+[UNIVERSAL] 7 computed, 0 skipped.
 
 [THINKER] Reasoning about dataset domain and quality profile...
 
 ======================================================================
 [THINKER] 🧠 THINKING PHASE — Dataset Understanding
 ======================================================================
-[THINKER] Analyzing 11 columns...
+[THINKER] Analyzing 3 columns...
 [THINKER] Dataset size: ? rows
-[THINKER] User hint provided: "nebius/SWE-agent-trajectories — real SWE-agent runs on GitHub software engineering issues. Each row is one agent attempt: a problem_statement (the GitHub issue), trajectory (the full sequence of agent thoughts/actions/observations), model_patch (the code diff the agent produced), and resolved (1=fixed, 0=failed). Key quality concerns: semantic consistency between problem and patch, trajectory coherence and completeness, patch quality and length distribution, label noise in the resolved flag, and whether trajectory text is well-formed vs. truncated or repeated."
+[THINKER] User hint provided: "Dataset: noised_APIGen. Columns: conversations, tools, system. Sample values — conversations: "~2l'x{Oo\,w},Ce!MB}cNa3CbL29.W:ieOy=aj+/"  |  tools: "{*)bM6PGpvuN~,/.$#1e=sbFlxFÃ±FÅŸ.yLM<6|â€‹этоâ€‹неправильный текст 7y-aÅŸDFYâ€‹O,RÅŸiKJ;dZ'!j\4â€‹i~n"  |  system: "# Airline Agent Policy
+The current time is 5131169-2455929-4251809 5548929:2645817:9510676 EST.
+
+As an airline agent, yo". Evaluate text quality, semantic coherence, formatting consistency, and any domain-specific issues relevant to this dataset type."
 
 [THINKER] 📋 Column Analysis:
-[THINKER]   • instance_id (text)
-[THINKER]   • problem_statement (text)
-[THINKER]   • trajectory (text)
-[THINKER]   • model_patch (text)
-[THINKER]   • resolved (numerical)
-[THINKER]   ... and 6 more columns
+[THINKER]   • conversations (text)
+[THINKER]   • tools (text)
+[THINKER]   • system (text)
 
 [THINKER] 🤔 Now reasoning about domain, data quality, and next steps...
-
-[THINKING] 🤔 Agent is reasoning...
-
-{
-  "dataset_type": "trajectory",
-
-  "domain": {
-    "name": "software",
-    "confidence": 0.9,
-    "reasoning": "The dataset consists of agent runs on GitHub software engineering issues, which indicates a focus on software development and issue resolution."
-  },
-
-  "column_profiles": [
-    {
-      "column_name": "instance_id",
-      "inferred_dtype": "text",
-      "semantic_role": "identifier",
-      "notes": "Unique identifier for each agent attempt."
-    },
-    {
-      "column_name": "problem_statement",
-      "inferred_dtype": "text",
-      "semantic_role": "text_content",
-      "notes": "Currently empty; needs investigation for potential issues."
-    },
-    {
-      "column_name": "trajectory",
-      "inferred_dtype": "text",
-      "semantic_role": "text_content",
-      "notes": "Long text; needs checks for coherence and completeness."
-    },
-    {
-      "column_name": "model_patch",
-      "inferred_dtype": "text",
-      "semantic_role": "code",
-      "notes": "Contains code diffs; quality and semantic consistency with problem statement need evaluation."
-    },
-    {
-      "column_name": "resolved",
-      "inferred_dtype": "numerical",
-      "semantic_role": "label",
-      "notes": "All values are 0; potential label noise or data issue."
-    },
-    {
-      "column_name": "repo",
-      "inferred_dtype": "text",
-      "semantic_role": "metadata",
-      "notes": "Currently empty; needs investigation."
-    },
-    {
-      "column_name": "model",
-      "inferred_dtype": "text",
-      "semantic_role": "metadata",
-      "notes": "Indicates the model used; consistent across rows."
-    },
-    {
-      "column_name": "problem_length",
-      "inferred_dtype": "numerical",
-      "semantic_role": "feature",
-      "notes": "All values are 0; needs investigation."
-    },
-    {
-      "column_name": "trajectory_length",
-      "inferred_dtype": "numerical",
-      "semantic_role": "feature",
-      "notes": "Varied lengths; check for coherence and completeness."
-    },
-    {
-      "column_name": "patch_length",
-      "inferred_dtype": "numerical",
-      "semantic_role": "feature",
-      "notes": "Varied lengths; check for quality and relevance."
-    },
-    {
-      "column_name": "num_steps",
-      "inferred_dtype": "numerical",
-      "semantic_role": "feature",
-      "notes": "Varied counts; check for coherence in trajectory."
-    }
-  ],
-
-  "surface_quality_hints": [
-    "Empty 'problem_statement' column raises concerns about data completeness.",
-    "All 'resolved' flags are 0, indicating potential label noise.",
-    "High variability in 'trajectory_length' and 'patch_length' suggests diverse agent behaviors."
-  ],
-
-  "governance_warnings": [
-    "Column 'repo' is empty; could indicate missing metadata."
-  ],
-
-  "reference_dataset": {
-    "seems_needed": true,
-    "reasoning": "A reference dataset could help evaluate the quality of the patches and their alignment with the problem statements."
-  },
-
-  "recommended_agents": {
-    "governance": { "run": true, "reason": "Always on — privacy is non-negotiable." },
-    "math": { "run": true, "reason": "To analyze distributions and variances in numerical columns." },
-    "semantic": { "run": true, "reason": "To check for semantic consistency between problem statements and patches." },
-    "utility": { "run": true, "reason": "To assess the utility of the generated patches in resolving issues." }
-  },
-
-  "execution_notes": [
-    "Math agent should focus on analyzing the distribution of 'num_steps' and 'patch_length'.",
-    "Semantic agent should check for alignment between 'trajectory' and 'model_patch'.",
-    "Investigate the empty 'problem_statement' and 'repo' columns for potential data collection issues."
-  ],
-
-  "user_hint_influence": "The user hint emphasized the importance of semantic consistency, trajectory coherence, and patch quality, which shaped the focus areas for the audit plan.",
-  
-  "reasoning_trace": "The dataset consists of agent runs related to software engineering issues, which led to the identification of the software domain. The metadata indicated several columns with potential quality issues, particularly the empty 'problem_statement' and 'resolved' flags. The need for a reference dataset was identified to evaluate the quality of the patches. The user hint highlighted specific quality concerns, which influenced the selection of recommended agents and execution notes."
-}
-
+[THINKING] 🤔 Reasoning...
+[THINKING] ✓ Done (3,257 chars)
 
 [THINKER] ✓ Analysis complete
 
@@ -189,163 +72,52 @@
 ======================================================================
 [RESEARCHER] AGENTIC RESEARCH PHASE — Multi-Angle DDG + Deep ArXiv PDF
 ======================================================================
-[RESEARCHER] Domain: 'software' | Type: 'trajectory'
+[RESEARCHER] Domain: 'airline' | Type: 'dialogue'
 
 [RESEARCHER] Phase 1: Multi-angle DuckDuckGo + Deep ArXiv PDF loading...
 
 [RESEARCHER]   Generating diverse DuckDuckGo search angles...
-[RESEARCHER]     Angle 1: how to compute "software trajectory data quality evaluation metrics" in Python
-[RESEARCHER]     Angle 2: "software trajectory data quality" evaluation metrics author
-[RESEARCHER]     Angle 3: survey on "software trajectory data quality evaluation metrics" 2022 OR 2023 OR 2024
-[RESEARCHER]     Angle 4: "data quality evaluation metrics" formula or statistical test
+[RESEARCHER]     Angle 1: how to compute "airline dialogue data quality evaluation metrics" in Python
+[RESEARCHER]     Angle 2: "airline dialogue data quality" evaluation metrics author
+[RESEARCHER]     Angle 3: "benchmark survey" on "dialogue data quality metrics"
+[RESEARCHER]     Angle 4: "F1 score" for evaluating "dialogue systems"
 
 [RESEARCHER]   Running multi-angle DuckDuckGo search + URL scraping...
-[RESEARCHER]      DDG: 0 unique URLs across 4 queries
+[RESEARCHER]      DDG: 8 unique URLs across 4 queries
+[RESEARCHER]      Scraped: https://link.springer.com/article/10.1007/s10462-026-11571-0 (3000 chars)
+[RESEARCHER]      Scraped: https://github.com/annontopicmodel/unsupervised_topic_modeli (3000 chars)
+[RESEARCHER]      Scraped: https://mltechniques.com/2024/06/15/synthesizing-multi-table (3000 chars)
 
 [RESEARCHER]   Wikipedia
-[RESEARCHER]      Query : "software machine learning dataset evaluation benchmark"
-[RESEARCHER]      OK: 3233 chars
+[RESEARCHER]      Query : "airline machine learning dataset evaluation benchmark"
+[RESEARCHER]      OK: 3280 chars
 [RESEARCHER]      Preview : 'Page: List of datasets for machine-learning research Summary: These datasets are used in machine learning (ML) research and have been cited in peer-reviewed academic journals. Datasets are an integral part of the field of machine learning. Major advances in this field can result from advances in lea'
 
 [RESEARCHER] ── ArXiv ────────────────────────────────────────
-[RESEARCHER]   Query  : "synthetic data evaluation metrics software machine learning fidelity quality"
+[RESEARCHER]   Query  : "synthetic data evaluation metrics airline machine learning fidelity quality"
 [RESEARCHER]   top_k  : 5  (full PDF download + chunking)
 [RESEARCHER]   Found 5 papers:
-[RESEARCHER]   [1] Evaluation of Software Product Quality Metrics
-[RESEARCHER]       ID: 2009.01557v1  | Year: 2020
-[RESEARCHER]       Abstract: Computing devices and associated software govern everyday life, and form the backbone of safety critical systems in banking, healthcare, automotive and other fields. Increasing system complexity, quic...
-[RESEARCHER]       Downloading PDF... 20pp, 44 relevant chunks extracted
-[RESEARCHER]   [2] Changing Data Sources in the Age of Machine Learning for Official Stat
+[RESEARCHER]   [1] Changing Data Sources in the Age of Machine Learning for Official Stat
 [RESEARCHER]       ID: 2306.04338v1  | Year: 2023
 [RESEARCHER]       Abstract: Data science has become increasingly essential for the production of official statistics, as it enables the automated collection, processing, and analysis of large amounts of data. With such data scie...
 [RESEARCHER]       Downloading PDF... 8pp, 11 relevant chunks extracted
-[RESEARCHER]   [3] DOME: Recommendations for supervised machine learning validation in bi
+[RESEARCHER]   [2] DOME: Recommendations for supervised machine learning validation in bi
 [RESEARCHER]       ID: 2006.16189v4  | Year: 2020
 [RESEARCHER]       Abstract: Modern biology frequently relies on machine learning to provide predictions and improve decision processes. There have been recent calls for more scrutiny on machine learning performance and possible ...
-[RESEARCHER]       Downloading PDF... 20pp, 22 relevant chunks extracted
-[RESEARCHER]   [4] Active learning for data streams: a survey
+[RESEARCHER]       Downloading PDF... 20pp, 18 relevant chunks extracted
+[RESEARCHER]   [3] Active learning for data streams: a survey
 [RESEARCHER]       ID: 2302.08893v4  | Year: 2023
 [RESEARCHER]       Abstract: Online active learning is a paradigm in machine learning that aims to select the most informative data points to label from a data stream. The problem of minimizing the cost associated with collecting...
 [RESEARCHER]       Downloading PDF... 20pp, 4 relevant chunks extracted
-[RESEARCHER]   [5] Towards CRISP-ML(Q): A Machine Learning Process Model with Quality Ass
+[RESEARCHER]   [4] Towards CRISP-ML(Q): A Machine Learning Process Model with Quality Ass
 [RESEARCHER]       ID: 2003.05155v2  | Year: 2020
 [RESEARCHER]       Abstract: Machine learning is an established and frequently used technique in industry and academia but a standard process model to improve success and efficiency of machine learning applications is still missi...
-[RESEARCHER]       Downloading PDF... 20pp, 20 relevant chunks extracted
+[RESEARCHER]       Downloading PDF... 20pp, 14 relevant chunks extracted
+[RESEARCHER]   [5] Generalizing Machine Learning Evaluation through the Integration of Sh
+[RESEARCHER]       ID: 2404.12511v1  | Year: 2024
+[RESEARCHER]       Abstract: This research paper delves into the innovative integration of Shannon entropy and rough set theory, presenting a novel approach to generalize the evaluation approach in machine learning. The conventio...
+[RESEARCHER]       Downloading PDF... 11pp, 23 relevant chunks extracted
 [RESEARCHER]   ArXiv done: 5/5 PDFs loaded, 24 total relevant chunks
 
 [RESEARCHER] Phase 1b: Generating 15 initial metric proposals with paper citations...
-
-[THINKING] 🤔 Agent is reasoning...
-
-{
-  "proposed_metrics": [
-    {
-      "metric_name": "Entropy of Trajectory Lengths",
-      "metric_type": "statistical",
-      "description": "Measures the entropy of the distribution of trajectory lengths to assess variability.",
-      "reasoning": "High entropy indicates diverse agent behaviors, which is crucial for understanding the complexity of the dataset.",
-      "source_influence": "Inspired by the need to analyze distributions in software metrics.",
-      "execution_hint": "Use scipy.stats.entropy to calculate entropy on the 'trajectory_length' column.",
-      "paper_citations": [
-        {
-          "title": "Evaluation of Software Product Quality Metrics",
-          "arxiv_id": "2009.01557v1",
-          "authors": "Arthur-Jozsef Molnar et al.",
-          "year": "2020",
-          "supporting_text": "We identify metric dependencies and check their consistency across applications and their versions."
-        },
-        {
-          "title": "Changing Data Sources in the Age of Machine Learning for Official Statistics",
-          "arxiv_id": "2306.04338v1",
-          "authors": "Cedric De Boom et al.",
-          "year": "2023",
-          "supporting_text": "The quality and integrity of data-science-driven statistics rely on the accuracy and reliability of the data."
-        }
-      ]
-    },
-    {
-      "metric_name": "Kullback-Leibler Divergence of Patch Lengths",
-      "metric_type": "statistical",
-      "description": "Calculates the Kullback-Leibler divergence between the distribution of patch lengths and a reference distribution.",
-      "reasoning": "This metric helps identify how much the distribution of patch lengths deviates from expected norms, indicating potential quality issues.",
-      "source_influence": "Based on the need for statistical measures to evaluate software metrics.",
-      "execution_hint": "Use scipy.stats.entropy to compute KL divergence between 'patch_length' and a reference distribution.",
-      "paper_citations": [
-        {
-          "title": "DOME: Recommendations for supervised machine learning validation in biology",
-          "arxiv_id": "2006.16189v4",
-          "authors": "Ian Walsh et al.",
-          "year": "2020",
-          "supporting_text": "We propose a set of community-wide recommendations aiming to help establish standards of supervised machine learning validation."
-        },
-        {
-          "title": "Towards CRISP-ML(Q): A Machine Learning Process Model with Quality Assurance Methodology",
-          "arxiv_id": "2003.05155v2",
-          "authors": "Stefan Studer et al.",
-          "year": "2020",
-          "supporting_text": "Data and software quality among others as the key challenges in the machine learning life cycle."
-        }
-      ]
-    },
-    {
-      "metric_name": "Semantic Coherence of Trajectories",
-      "metric_type": "semantic_consistency",
-      "description": "Evaluates the semantic coherence of the 'trajectory' text content using NLP techniques.",
-      "reasoning": "Ensures that the generated trajectories are logically consistent and relevant to the problem statements.",
-      "source_influence": "Influenced by the need for semantic consistency in software metrics.",
-      "execution_hint": "Use a pre-trained transformer model to compute coherence scores for the 'trajectory' column.",
-      "paper_citations": [
-        {
-          "title": "Evaluation of Software Product Quality Metrics",
-          "arxiv_id": "2009.01557v1",
-          "authors": "Arthur-Jozsef Molnar et al.",
-          "year": "2020",
-          "supporting_text": "The latest software quality models have undergone standardization processes."
-        },
-        {
-          "title": "Active learning for data streams: a survey",
-          "arxiv_id": "2302.08893v4",
-          "authors": "Davide Cacciarelli et al.",
-          "year": "2023",
-          "supporting_text": "Evaluation metrics for assessing the performance of stream-based active learning algorithms."
-        }
-      ]
-    },
-    {
-      "metric_name": "Readability Score of Problem Statements",
-      "metric_type": "text_quality",
-      "description": "Calculates the readability score of the 'problem_statement' text to assess clarity.",
-      "reasoning": "A clear problem statement is essential for understanding the context and relevance of the generated patches.",
-      "source_influence": "Based on the importance of clear communication in software metrics.",
-      "execution_hint": "Use the Flesch-Kincaid readability test on the 'problem_statement' column.",
-      "paper_citations": [
-        {
-          "title": "Changing Data Sources in the Age of Machine Learning for Official Statistics",
-          "arxiv_id": "2306.04338v1",
-          "authors": "Cedric De Boom et al.",
-          "year": "2023",
-          "supporting_text": "The quality and integrity of data-science-driven statistics rely on the accuracy and reliability of the data."
-        },
-        {
-          "title": "Towards CRISP-ML(Q): A Machine Learning Process Model with Quality Assurance Methodology",
-          "arxiv_id": "2003.05155v2",
-          "authors": "Stefan Studer et al.",
-          "year": "2020",
-          "supporting_text": "Data and software quality among others as the key challenges in the machine learning life cycle."
-        }
-      ]
-    },
-    {
-      "metric_name": "Consistency of Resolved Labels",
-      "metric_type": "label_noise",
-      "description": "Checks for consistency in the 'resolved' labels across the dataset.",
-      "reasoning": "All values being 0 raises concerns about label noise, which can affect model training and evaluation.",
-      "source_influence": "Influenced by the need for reliable labels in machine learning datasets.",
-      "execution_hint": "Use pandas to check the unique values in the 'resolved' column.",
-      "paper_citations": [
-        {
-          "title": "DOME: Recommendations for supervised machine learning validation in biology",
-          "arxiv_id": "2006.16189v4",
-          "authors": "Ian Walsh et al.",
-          "year": "2020",
-          "supporting_text": "Data
+[THINKING] 🤔 Reasoning...
