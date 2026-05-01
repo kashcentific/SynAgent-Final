@@ -689,6 +689,8 @@ Return ONLY valid JSON array:
 
         print(f"[EVALUATOR]   Auto semantic check: {len(anomalous_indices)} anomalous rows found")
 
+        # Extract actual computed metric value, not hardcoded
+        metric_value = self._extract_metric_value(exec_result.get("output", ""))
         return [{
             "metric_name":              "auto_semantic_consistency",
             "metric_type":              "semantic_consistency",
@@ -696,7 +698,7 @@ Return ONLY valid JSON array:
             "reasoning":                auto_metric["reasoning"],
             "source_influence":         "Auto-injected by evaluator",
             "feasibility_score":        0.9,
-            "quality_score":            0.85,
+            "quality_score":            metric_value,
             "execution_output":         exec_result.get("output", "(no output)"),
             "generated_code":           result.get("code", ""),
             "error":                    exec_result.get("error"),
@@ -751,6 +753,22 @@ Return JSON array:
         except Exception:
             pass
         return []
+
+    def _extract_metric_value(self, exec_output: str) -> float:
+        """
+        Extract the actual computed metric value (METRIC_VALUE: line) from execution output.
+        Returns value as float (0.0-1.0), or 0.5 as default if not found.
+        """
+        if not exec_output:
+            return 0.5
+        for line in exec_output.splitlines():
+            if line.startswith("METRIC_VALUE:"):
+                try:
+                    value = float(line.replace("METRIC_VALUE:", "").strip())
+                    return np.clip(value, 0.0, 1.0)
+                except ValueError:
+                    return 0.5
+        return 0.5
 
     def _observe_result_quality(self, exec_result: Dict[str, Any]) -> Dict[str, Any]:
         output = exec_result.get("output") or ""
@@ -1019,6 +1037,7 @@ Return ONLY valid JSON — no markdown:
                     except Exception:
                         anomalous_samples = []
 
+                    metric_value = self._extract_metric_value(exec_result.get("output", ""))
                     per_metric_results.append({
                         "metric_name":              name,
                         "metric_type":              metric.get("metric_type", "other"),
@@ -1026,7 +1045,7 @@ Return ONLY valid JSON — no markdown:
                         "reasoning":                metric.get("reasoning", ""),
                         "source_influence":         metric.get("source_influence", ""),
                         "feasibility_score":        metric.get("feasibility_score", 0),
-                        "quality_score":            quality["quality_score"],
+                        "quality_score":            metric_value,
                         "execution_output":         exec_result.get("output") or "(no output)",
                         "generated_code":           "# Tool registry (pre-built or cached)",
                         "error":                    None,
@@ -1079,6 +1098,7 @@ Return ONLY valid JSON — no markdown:
                 except Exception:
                     anomalous_samples = []
 
+                metric_value = self._extract_metric_value(exec_result.get("output", ""))
                 per_metric_results.append({
                     "metric_name":              name,
                     "metric_type":              metric.get("metric_type", "semantic_consistency"),
@@ -1086,7 +1106,7 @@ Return ONLY valid JSON — no markdown:
                     "reasoning":                metric.get("reasoning", ""),
                     "source_influence":         metric.get("source_influence", ""),
                     "feasibility_score":        metric.get("feasibility_score", 0),
-                    "quality_score":            quality["quality_score"],
+                    "quality_score":            metric_value,
                     "execution_output":         exec_result.get("output") or "(no output)",
                     "generated_code":           sem_result.get("code", ""),
                     "error":                    exec_result.get("error"),
@@ -1175,6 +1195,7 @@ Return ONLY valid JSON — no markdown:
             except Exception:
                 anomalous_samples = []
 
+            metric_value = self._extract_metric_value(exec_result.get("output", ""))
             per_metric_results.append({
                 "metric_name":              name,
                 "metric_type":              metric.get("metric_type", "other"),
@@ -1182,7 +1203,7 @@ Return ONLY valid JSON — no markdown:
                 "reasoning":                metric.get("reasoning", ""),
                 "source_influence":         metric.get("source_influence", ""),
                 "feasibility_score":        metric.get("feasibility_score", 0),
-                "quality_score":            best_result["quality"]["quality_score"],
+                "quality_score":            metric_value,
                 "execution_output":         exec_result.get("output") or "(no output)",
                 "generated_code":           best_result["code"],
                 "error":                    exec_result.get("error"),
